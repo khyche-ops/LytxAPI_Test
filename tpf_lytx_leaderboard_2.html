@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TPF Driver Safety Leaderboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --navy: #1B2A4A;
+    --orange: #D45F1E;
+    --orange-light: #F07A3A;
+    --bg: #0f1a2e;
+    --surface: rgba(255,255,255,0.05);
+    --surface2: rgba(255,255,255,0.08);
+    --border: rgba(255,255,255,0.08);
+    --text: #ffffff;
+    --text2: rgba(255,255,255,0.6);
+    --text3: rgba(255,255,255,0.35);
+    --gold: #F5C842;
+    --silver: #C0C8D8;
+    --bronze: #CD7F32;
+    --green: #4ADE80;
+    --rad: 12px;
+    --rad-sm: 8px;
+  }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 20% 50%, rgba(27,42,74,0.8) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, rgba(212,95,30,0.15) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap { position: relative; z-index: 1; padding: 1.5rem 2rem; max-width: 1400px; margin: 0 auto; }
+
+  /* Header */
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; }
+  .logo-area { display: flex; align-items: center; gap: 14px; }
+  .logo-mark { width: 44px; height: 44px; background: var(--orange); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .logo-mark svg { width: 24px; height: 24px; fill: #fff; }
+  .logo-text { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+  .logo-sub { font-size: 13px; color: var(--text2); margin-top: 1px; }
+  .header-right { text-align: right; }
+  .period-badge { display: inline-block; background: var(--surface2); border: 0.5px solid var(--border); border-radius: 20px; padding: 5px 14px; font-size: 12px; color: var(--text2); font-family: 'DM Mono', monospace; }
+  .updated-text { font-size: 11px; color: var(--text3); margin-top: 5px; font-family: 'DM Mono', monospace; }
+
+  /* Loading */
+  #loading { text-align: center; padding: 6rem 2rem; }
+  .spinner { width: 40px; height: 40px; border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--orange); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 20px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #loading p { color: var(--text2); font-size: 15px; }
+  #loading-detail { font-size: 12px; color: var(--text3); margin-top: 8px; font-family: 'DM Mono', monospace; }
+
+  /* Login */
+
+
+  /* Dashboard */
+  #dashboard { display: none; }
+
+  /* Groups grid */
+  .groups-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+  @media (max-width: 900px) { .groups-grid { grid-template-columns: 1fr; } }
+
+  .group-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--rad); overflow: hidden; }
+  .group-header { background: var(--navy); padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+  .group-name { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+  .group-meta { font-size: 11px; color: var(--text2); font-family: 'DM Mono', monospace; }
+  .group-accent { width: 4px; height: 28px; border-radius: 2px; flex-shrink: 0; }
+
+  /* Driver rows */
+  .driver-list { padding: 0.5rem 0; }
+  .driver-row { display: flex; align-items: center; gap: 12px; padding: 0.65rem 1.25rem; transition: background 0.12s; }
+  .driver-row:hover { background: var(--surface2); }
+  .rank { font-size: 13px; font-weight: 700; font-family: 'DM Mono', monospace; width: 24px; flex-shrink: 0; text-align: center; }
+  .rank-1 { color: var(--gold); font-size: 15px; }
+  .rank-2 { color: var(--silver); }
+  .rank-3 { color: var(--bronze); }
+  .rank-other { color: var(--text3); }
+  .medal { font-size: 16px; width: 24px; text-align: center; flex-shrink: 0; }
+  .driver-name { flex: 1; font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .driver-name.top3 { font-weight: 600; }
+  .score-area { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .score-bar-track { width: 80px; height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; }
+  .score-bar-fill { height: 100%; border-radius: 2px; }
+  .score-val { font-size: 13px; font-weight: 600; font-family: 'DM Mono', monospace; min-width: 36px; text-align: right; }
+  .events-pill { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; min-width: 52px; text-align: right; }
+  .perfect-badge { font-size: 10px; background: rgba(74,222,128,0.15); color: var(--green); border-radius: 4px; padding: 2px 6px; font-weight: 600; }
+
+  /* Divider */
+  .driver-divider { height: 0.5px; background: var(--border); margin: 0 1.25rem; }
+
+  /* Footer */
+  footer { margin-top: 2rem; text-align: center; font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+  /* Scrolling if needed for OptiSigns */
+  .group-card.tall .driver-list { max-height: none; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 6px; margin: -0.75rem 0 1.5rem; }
+  .tab { background: var(--surface); border: 0.5px solid var(--border); color: var(--text2); font: 600 13px 'DM Sans', sans-serif; padding: 8px 16px; border-radius: 20px; cursor: pointer; }
+  .tab:hover { background: var(--surface2); color: var(--text); }
+  .tab.active { background: var(--orange); border-color: var(--orange); color: #fff; }
+
+  /* DOT Inspections */
+  #dot-view { display: none; }
+  .kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+  @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+  .kpi { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--rad); padding: 1rem 1.25rem; }
+  .kpi-label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; }
+  .kpi-val { font-size: 28px; font-weight: 700; margin-top: 6px; font-family: 'DM Mono', monospace; letter-spacing: -0.02em; }
+  .kpi-sub { font-size: 11px; color: var(--text3); margin-top: 2px; font-family: 'DM Mono', monospace; }
+  .range-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; gap: 1rem; flex-wrap: wrap; }
+  .range-btns { display: flex; gap: 4px; background: var(--surface); border: 0.5px solid var(--border); border-radius: 20px; padding: 3px; }
+  .range-btn { background: none; border: 0; color: var(--text2); font: 500 12px 'DM Mono', monospace; padding: 5px 12px; border-radius: 16px; cursor: pointer; }
+  .range-btn.active { background: var(--surface2); color: var(--text); }
+  .search { background: var(--surface); border: 0.5px solid var(--border); border-radius: 20px; color: var(--text); font: 13px 'DM Sans', sans-serif; padding: 7px 14px; width: 220px; }
+  .search::placeholder { color: var(--text3); }
+  .dot-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; align-items: start; }
+  @media (max-width: 1100px) { .dot-grid { grid-template-columns: 1fr; } }
+  .panel { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--rad); overflow: hidden; margin-bottom: 1.5rem; }
+  .panel-head { background: var(--navy); padding: 0.85rem 1.25rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
+  .panel-title { font-size: 15px; font-weight: 700; }
+  .panel-meta { font-size: 11px; color: var(--text2); font-family: 'DM Mono', monospace; }
+  .tbl-wrap { overflow-x: auto; }
+  table.dt { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .dt th { text-align: left; font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; padding: 10px 12px; border-bottom: 0.5px solid var(--border); cursor: pointer; white-space: nowrap; user-select: none; }
+  .dt th.num, .dt td.num { text-align: right; }
+  .dt th.sorted { color: var(--orange-light); }
+  .dt td { padding: 9px 12px; border-bottom: 0.5px solid var(--border); white-space: nowrap; }
+  .dt tr.drow { cursor: pointer; }
+  .dt tr.drow:hover td { background: var(--surface2); }
+  .dt td.mono { font-family: 'DM Mono', monospace; }
+  .div-tag { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px; }
+  .pill { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px; font-family: 'DM Mono', monospace; }
+  .pill.clean { background: rgba(74,222,128,0.15); color: var(--green); }
+  .pill.oos { background: rgba(248,113,113,0.18); color: #f87171; }
+  .pill.viol { background: rgba(251,191,36,0.15); color: #fbbf24; }
+  .detail-row td { background: rgba(0,0,0,0.18); white-space: normal; padding: 10px 16px 14px; }
+  .insp { padding: 8px 0; border-bottom: 0.5px dashed var(--border); }
+  .insp:last-child { border-bottom: 0; }
+  .insp-top { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 12px; color: var(--text2); font-family: 'DM Mono', monospace; }
+  .vio { font-size: 12px; color: var(--text2); margin: 4px 0 0 14px; }
+  .vio b { color: var(--text); font-weight: 600; font-family: 'DM Mono', monospace; }
+  .bar-row { display: grid; grid-template-columns: 1fr 120px 28px; align-items: center; gap: 10px; padding: 8px 1.25rem; font-size: 13px; }
+  .bar-track { height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; background: var(--orange); border-radius: 3px; }
+  .bar-n { font-family: 'DM Mono', monospace; text-align: right; color: var(--text2); }
+  .recent { padding: 10px 1.25rem; border-bottom: 0.5px solid var(--border); }
+  .recent:last-child { border-bottom: 0; }
+  .recent-name { font-size: 13px; font-weight: 600; }
+  .recent-meta { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; margin-top: 2px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .empty { padding: 1.5rem; text-align: center; color: var(--text3); font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="logo-area">
+      <div class="logo-mark"><svg viewBox="0 0 16 16"><path d="M8 1L2 4v4c0 3.3 2.5 6.4 6 7 3.5-.6 6-3.7 6-7V4L8 1z"/></svg></div>
+      <div>
+        <div class="logo-text">Texas Pride Fuels</div>
+        <div class="logo-sub" id="logo-sub">Driver Safety Leaderboard · Last 90 Days</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="period-badge" id="period-badge">Loading…</div>
+      <div class="updated-text" id="updated-text"></div>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-view="lytx">Lytx Leaderboard</button>
+    <button class="tab" data-view="dot">DOT Inspections</button>
+  </nav>
+
+  <div id="dot-view">
+    <div class="kpis" id="dot-kpis"></div>
+    <div class="range-row">
+      <div class="range-btns" id="dot-range">
+        <button class="range-btn" data-days="90">90D</button>
+        <button class="range-btn" data-days="365">12M</button>
+        <button class="range-btn active" data-days="730">24M</button>
+      </div>
+      <input class="search" id="dot-search" placeholder="Search driver…">
+    </div>
+    <div class="dot-grid">
+      <div class="panel">
+        <div class="panel-head"><div class="panel-title">Inspections by Driver</div><div class="panel-meta" id="dot-driver-meta"></div></div>
+        <div class="tbl-wrap"><table class="dt" id="dot-table"></table></div>
+      </div>
+      <div>
+        <div class="panel">
+          <div class="panel-head"><div class="panel-title">Violations by BASIC</div><div class="panel-meta" id="dot-basic-meta"></div></div>
+          <div id="dot-basics"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><div class="panel-title">Recent Inspections</div><div class="panel-meta">Last 8</div></div>
+          <div id="dot-recent"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <div id="loading" style="display:none;">
+    <div class="spinner"></div>
+    <p>Building leaderboard…</p>
+    <div id="loading-detail"></div>
+  </div>
+
+  <div id="dashboard">
+    <div class="groups-grid" id="groups-grid"></div>
+  </div>
+
+  <footer id="footer" style="display:none;">
+    Refreshes daily at 5:00 AM CT &nbsp;·&nbsp; Powered by Lytx &nbsp;·&nbsp; Texas Pride Fuels
+  </footer>
+</div>
+
+<script>
+const PROXY = 'https://lytx-proxy.k-hyche.workers.dev';
+
+const GROUPS = {
+  '5100ffff-60b6-e4cd-8fba-60a3e15b0000': 'Lube',
+  '5100ffff-60b6-e4cd-8fb9-60a3e15b0000': 'AFS',
+  '5100ffff-60b6-e4cd-c031-60a3e15b0000': 'Transport',
+  '5100ffff-60b6-e5cd-5b73-60a3e15b0000': 'Route',
+  '5100ffff-60b6-e5cd-8f82-60a3e15b0000': 'Transport',
+};
+
+const GROUP_COLORS = {
+  'Lube':      '#D45F1E',
+  'AFS':       '#1a5fa8',
+  'Transport': '#0f6e56',
+  'Route':     '#7f77dd',
+};
+
+const GROUP_ORDER = ['Transport', 'Lube', 'AFS', 'Route'];
+
+let token = null;
+let refreshTimer = null;
+
+async function autoLogin() {
+  try {
+    const resp = await fetch(PROXY + '/token');
+    if (!resp.ok) throw new Error('Token fetch failed');
+    const data = await resp.json();
+    token = data.access_token || data.token || data.authToken;
+    if (!token) throw new Error('No token in response');
+    return true;
+  } catch(e) {
+    document.getElementById('loading-detail').textContent = 'Auth error: ' + e.message;
+    return false;
+  }
+}
+
+function isValidDriver(e) {
+  const first = (e.driverFirstName || '').trim().toLowerCase();
+  const last  = (e.driverLastName  || '').trim().toLowerCase();
+  const full  = (first + ' ' + last).trim();
+  if (!full) return false;
+  if (full.includes('unknown')) return false;
+  if (['mechanic','driver','vendor','contractor','lead'].includes(first)) return false;
+  return true;
+}
+
+async function refreshToken() {
+  return await autoLogin();
+}
+
+// Auto-start on page load
+window.addEventListener('DOMContentLoaded', async () => {
+  initTabs();
+  loadDot(); // independent of Lytx auth
+  const ok = await autoLogin();
+  if (ok) await loadLeaderboard();
+  scheduleRefresh();
+});
+
+function scheduleRefresh() {
+  if (refreshTimer) clearTimeout(refreshTimer);
+  const msUntil5amCT = getMsUntil5amCT();
+  console.log('Next refresh in', Math.round(msUntil5amCT/1000/60), 'minutes');
+  refreshTimer = setTimeout(async () => {
+    const ok = await refreshToken();
+    if (ok) await loadLeaderboard();
+    await loadDot();
+    scheduleRefresh();
+  }, msUntil5amCT);
+}
+
+/* =========================================================
+   Tabs  (URL options: ?view=dot  ·  ?rotate=60  → auto-switch every 60s for TV)
+   ========================================================= */
+let currentView = 'lytx';
+let lytxReady = false;
+const headerText = { lytx: { badge: 'Loading…', updated: '' }, dot: { badge: 'Loading…', updated: '' } };
+const SUBTITLES = { lytx: 'Driver Safety Leaderboard · Last 90 Days', dot: 'DOT Roadside Inspections · Per Driver' };
+const FOOTERS = {
+  lytx: 'Refreshes daily at 5:00 AM CT &nbsp;·&nbsp; Powered by Lytx &nbsp;·&nbsp; Texas Pride Fuels',
+  dot:  'Refreshes daily at 6:00 AM CT &nbsp;·&nbsp; Source: CAB / FMCSA &nbsp;·&nbsp; Texas Pride Fuels',
+};
+
+function initTabs() {
+  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => setView(t.dataset.view)));
+  const p = new URLSearchParams(location.search);
+  if (p.get('view') === 'dot') setView('dot');
+  const rot = parseInt(p.get('rotate'), 10);
+  if (rot > 0) setInterval(() => setView(currentView === 'lytx' ? 'dot' : 'lytx'), rot * 1000);
+}
+
+function setView(v) {
+  currentView = v;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.view === v));
+  const isLytx = v === 'lytx';
+  document.getElementById('loading').style.display   = isLytx && !lytxReady ? 'block' : 'none';
+  document.getElementById('dashboard').style.display = isLytx && lytxReady ? 'block' : 'none';
+  document.getElementById('dot-view').style.display  = isLytx ? 'none' : 'block';
+  const showFooter = isLytx ? lytxReady : !!dotData;
+  const footer = document.getElementById('footer');
+  footer.innerHTML = FOOTERS[v];
+  footer.style.display = showFooter ? 'block' : 'none';
+  document.getElementById('logo-sub').textContent = SUBTITLES[v];
+  applyHeader();
+}
+
+function applyHeader() {
+  document.getElementById('period-badge').textContent = headerText[currentView].badge;
+  document.getElementById('updated-text').textContent = headerText[currentView].updated;
+}
+
+/* =========================================================
+   DOT Inspections (CAB → Cloudflare Worker → here)
+   ========================================================= */
+const CAB_API = 'https://tpf-cab-inspections.k-hyche.workers.dev';
+let dotData = null;
+let dotDays = 730;
+let dotSort = { key: 'last', dir: -1 };
+let dotOpen = null;
+const lytxDriverGroup = {}; // nameKey -> Lytx division
+
+function nameKey(first, last) {
+  const f = (first || '').trim().split(/\s+/)[0].toLowerCase();
+  const l = (last || '').trim().toLowerCase();
+  return f + '|' + l;
+}
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function titleCase(s) { return (s || '').toLowerCase().replace(/(^|[\s'-])\w/g, m => m.toUpperCase()); }
+function fmtDate(d) { return d ? new Date(d + 'T12:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}) : '—'; }
+
+async function loadDot() {
+  try {
+    const r = await fetch(CAB_API + '/inspections');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    dotData = await r.json();
+    const upd = new Date(dotData.updatedAt);
+    headerText.dot.updated = 'CAB synced ' + upd.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' ' + upd.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    if (!loadDot.wired) wireDotControls();
+    renderDot();
+    if (currentView === 'dot') setView('dot');
+  } catch (e) {
+    headerText.dot = { badge: 'Unavailable', updated: 'CAB feed error: ' + e.message };
+    document.getElementById('dot-kpis').innerHTML = '';
+    document.getElementById('dot-table').innerHTML = `<tr><td class="empty">Could not load inspection data (${esc(e.message)}).</td></tr>`;
+    if (currentView === 'dot') applyHeader();
+  }
+}
+
+function wireDotControls() {
+  loadDot.wired = true;
+  document.querySelectorAll('#dot-range .range-btn').forEach(b => b.addEventListener('click', () => {
+    dotDays = +b.dataset.days; dotOpen = null;
+    document.querySelectorAll('#dot-range .range-btn').forEach(x => x.classList.toggle('active', x === b));
+    renderDot();
+  }));
+  document.getElementById('dot-search').addEventListener('input', () => renderDriverTable());
+}
+
+function dotInspectionsInRange() {
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - dotDays);
+  const c = cutoff.toISOString().slice(0, 10);
+  return (dotData?.inspections || []).filter(i => i.date >= c);
+}
+
+function buildDrivers(insps) {
+  const map = {};
+  for (const i of insps) {
+    for (const d of (i.drivers || [])) {
+      const key = d.licHash || nameKey(d.first, d.last);
+      const m = map[key] ||= {
+        key, name: titleCase(`${(d.first||'').split(' ')[0]} ${d.last||''}`).trim(),
+        division: lytxDriverGroup[nameKey(d.first, d.last)] || '—',
+        insp: 0, clean: 0, viol: 0, oos: 0, last: '', list: [],
+      };
+      m.insp++; if (i.clean) m.clean++; m.viol += i.violations.length; if (i.oos) m.oos++;
+      if (i.date > m.last) m.last = i.date;
+      m.list.push(i);
+    }
+  }
+  return Object.values(map).map(m => ({ ...m, cleanPct: m.insp ? m.clean / m.insp : 0 }));
+}
+
+let dotDriversCache = [];
+
+function renderDot() {
+  if (!dotData) return;
+  const insps = dotInspectionsInRange();
+  const n = insps.length;
+  const clean = insps.filter(i => i.clean).length;
+  const oos = insps.filter(i => i.oos).length;
+  const viol = insps.reduce((s, i) => s + i.violations.length, 0);
+  const last = insps.map(i => i.date).sort().at(-1);
+  const daysSince = last ? Math.floor((Date.now() - new Date(last + 'T12:00:00')) / 86400000) : null;
+  const pct = x => n ? Math.round(x / n * 100) + '%' : '—';
+  const label = { 90: 'Last 90 days', 365: 'Last 12 months', 730: 'Last 24 months' }[dotDays];
+
+  headerText.dot.badge = label;
+  if (currentView === 'dot') applyHeader();
+
+  document.getElementById('dot-kpis').innerHTML = [
+    ['Inspections', n, `${new Set(insps.flatMap(i => i.drivers.map(d => d.licHash))).size} drivers`, '#fff'],
+    ['Clean Rate', pct(clean), `${clean} with no violations`, '#4ADE80'],
+    ['Out of Service', pct(oos), `${oos} inspection${oos !== 1 ? 's' : ''}`, oos ? '#f87171' : '#4ADE80'],
+    ['Violations', viol, n ? (viol / n).toFixed(1) + ' per inspection' : '', '#fbbf24'],
+    ['Last Inspection', daysSince === null ? '—' : daysSince + 'd', last ? fmtDate(last) : '', '#fff'],
+  ].map(([l, v, s, c]) => `<div class="kpi"><div class="kpi-label">${l}</div><div class="kpi-val" style="color:${c}">${v}</div><div class="kpi-sub">${s}</div></div>`).join('');
+
+  dotDriversCache = buildDrivers(insps);
+  renderDriverTable();
+
+  // BASIC breakdown
+  const basics = {};
+  insps.forEach(i => i.violations.forEach(v => { const k = v.basic || 'Other'; basics[k] = (basics[k] || 0) + 1; }));
+  const bl = Object.entries(basics).sort((a, b) => b[1] - a[1]);
+  const max = Math.max(1, ...bl.map(b => b[1]));
+  document.getElementById('dot-basic-meta').textContent = `${viol} total`;
+  document.getElementById('dot-basics').innerHTML = bl.length
+    ? bl.map(([k, c]) => `<div class="bar-row"><div>${esc(k)}</div><div class="bar-track"><div class="bar-fill" style="width:${c / max * 100}%"></div></div><div class="bar-n">${c}</div></div>`).join('')
+    : '<div class="empty">No violations in this period</div>';
+
+  // Recent
+  const recent = [...insps].sort((a, b) => (b.start || b.date).localeCompare(a.start || a.date)).slice(0, 8);
+  document.getElementById('dot-recent').innerHTML = recent.length ? recent.map(i => {
+    const who = i.drivers.map(d => titleCase(`${(d.first||'').split(' ')[0]} ${d.last||''}`)).join(', ') || 'Unknown driver';
+    return `<div class="recent"><div class="recent-name">${esc(who)}</div>
+      <div class="recent-meta">${fmtDate(i.date)} · L${i.level} · ${esc(i.state)} ${statusPill(i)}</div></div>`;
+  }).join('') : '<div class="empty">No inspections in this period</div>';
+}
+
+function statusPill(i) {
+  if (i.oos) return '<span class="pill oos">OOS</span>';
+  if (i.clean) return '<span class="pill clean">CLEAN</span>';
+  return `<span class="pill viol">${i.violations.length} VIOL</span>`;
+}
+
+const DOT_COLS = [
+  { key: 'name', label: 'Driver' },
+  { key: 'division', label: 'Division' },
+  { key: 'insp', label: 'Insp', num: true },
+  { key: 'clean', label: 'Clean', num: true },
+  { key: 'cleanPct', label: 'Clean %', num: true },
+  { key: 'viol', label: 'Viol', num: true },
+  { key: 'oos', label: 'OOS', num: true },
+  { key: 'last', label: 'Last Insp', num: true },
+];
+
+function renderDriverTable() {
+  const q = document.getElementById('dot-search').value.trim().toLowerCase();
+  const rows = dotDriversCache.filter(d => !q || d.name.toLowerCase().includes(q));
+  const { key, dir } = dotSort;
+  rows.sort((a, b) => {
+    const x = a[key], y = b[key];
+    const c = typeof x === 'number' ? x - y : String(x).localeCompare(String(y));
+    return c * dir || a.name.localeCompare(b.name);
+  });
+  document.getElementById('dot-driver-meta').textContent = `${rows.length} driver${rows.length !== 1 ? 's' : ''}`;
+
+  const head = '<tr>' + DOT_COLS.map(c =>
+    `<th class="${c.num ? 'num' : ''} ${c.key === key ? 'sorted' : ''}" data-k="${c.key}">${c.label}${c.key === key ? (dir > 0 ? ' ↑' : ' ↓') : ''}</th>`).join('') + '</tr>';
+
+  const body = rows.map(d => {
+    const color = GROUP_COLORS[d.division];
+    const divCell = color ? `<span class="div-tag" style="background:${color}40;color:color-mix(in srgb, ${color} 55%, white)">${d.division}</span>` : '<span style="color:var(--text3)">—</span>';
+    const cp = Math.round(d.cleanPct * 100);
+    const cpColor = cp >= 80 ? '#4ADE80' : cp >= 50 ? '#fbbf24' : '#f87171';
+    let html = `<tr class="drow" data-key="${esc(d.key)}">
+      <td style="font-weight:500">${esc(d.name)}</td><td>${divCell}</td>
+      <td class="num mono">${d.insp}</td><td class="num mono">${d.clean}</td>
+      <td class="num mono" style="color:${cpColor}">${cp}%</td>
+      <td class="num mono" style="color:${d.viol ? '#fbbf24' : 'var(--text3)'}">${d.viol}</td>
+      <td class="num mono" style="color:${d.oos ? '#f87171' : 'var(--text3)'}">${d.oos}</td>
+      <td class="num mono">${fmtDate(d.last)}</td></tr>`;
+    if (dotOpen === d.key) {
+      const list = [...d.list].sort((a, b) => b.date.localeCompare(a.date)).map(i => {
+        const unit = i.units.map(u => u.companyId || u.unit).filter(Boolean).join(', ');
+        const vios = i.violations.map(v =>
+          `<div class="vio"><b>${esc(v.code)}</b> ${esc(v.desc)} <span style="color:var(--text3)">· ${esc(v.basic || '')}${v.oos ? ' · <span style="color:#f87171">OOS</span>' : ''}</span></div>`).join('');
+        return `<div class="insp"><div class="insp-top">${fmtDate(i.date)} · Level ${i.level} · ${esc(i.state)} ${esc(i.location || '')}${unit ? ' · Unit ' + esc(unit) : ''} · ${esc(i.reportNumber)} ${statusPill(i)}</div>${vios}</div>`;
+      }).join('');
+      html += `<tr class="detail-row"><td colspan="${DOT_COLS.length}">${list}</td></tr>`;
+    }
+    return html;
+  }).join('');
+
+  const t = document.getElementById('dot-table');
+  t.innerHTML = head + (body || `<tr><td colspan="${DOT_COLS.length}" class="empty">No drivers match</td></tr>`);
+  t.querySelectorAll('th').forEach(th => th.addEventListener('click', () => {
+    const k = th.dataset.k;
+    dotSort = dotSort.key === k ? { key: k, dir: -dotSort.dir } : { key: k, dir: (k === 'name' || k === 'division') ? 1 : -1 };
+    renderDriverTable();
+  }));
+  t.querySelectorAll('tr.drow').forEach(tr => tr.addEventListener('click', () => {
+    dotOpen = dotOpen === tr.dataset.key ? null : tr.dataset.key;
+    renderDriverTable();
+  }));
+}
+
+function getMsUntil5amCT() {
+  const now = new Date();
+  // CT is UTC-5 (CST) or UTC-6 (CDT) - use UTC-5 (CST)
+  const utcOffset = -5 * 60;
+  const ctNow = new Date(now.getTime() + utcOffset * 60000);
+  const next5am = new Date(ctNow);
+  next5am.setHours(5, 0, 0, 0);
+  if (next5am <= ctNow) next5am.setDate(next5am.getDate() + 1);
+  return next5am - ctNow;
+}
+
+async function loadLeaderboard() {
+  lytxReady = false;
+  if (currentView === 'lytx') document.getElementById('loading').style.display = 'block';
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('footer').style.display = 'none';
+
+  // Align to CT midnight (UTC-5) so display and API window match exactly
+  const now = new Date();
+  const ctOffset = 5 * 60 * 60 * 1000; // CST UTC-5
+  const todayCtMidnight = new Date(Math.floor((now.getTime() - ctOffset) / 86400000) * 86400000 + ctOffset);
+  const end   = todayCtMidnight;
+  const start = new Date(todayCtMidnight.getTime() - 90 * 24 * 60 * 60 * 1000);
+  const fmt   = d => d.toISOString().slice(0,19);
+
+  // Paginate through all events
+  const allEvents = [];
+  let page = 1;
+  while (true) {
+    document.getElementById('loading-detail').textContent = `Page ${page} · ${allEvents.length} events loaded…`;
+    const resp = await fetch(
+      `${PROXY}/api/v0/video/safety/eventsWithMetadata?from=${fmt(start)}&to=${fmt(end)}&limit=1000&page=${page}&includeSubgroups=true`,
+      { headers: { 'Authorization': 'Bearer ' + token } }
+    );
+    const data = await resp.json();
+    if (!Array.isArray(data) || data.length === 0) break;
+    // Filter client-side to exact window since Lytx may use downloadedDate not recordDateUTC
+    const filtered = data.filter(e => {
+      const d = new Date(e.recordDateUTC);
+      return d >= start && d <= end;
+    });
+    allEvents.push(...filtered);
+    if (data.length < 1000) break;
+    page++;
+  }
+
+  document.getElementById('loading-detail').textContent = `Processing ${allEvents.length} events…`;
+
+  // Build per-group driver map (combine Transport groups)
+  const driverMap = {}; // group -> driverName -> { coachable, total, groupEventCount }
+  GROUP_ORDER.forEach(g => driverMap[g] = {});
+
+  // Track which group has more events for each driver (for cross-group dedup)
+  const driverGroupCount = {}; // driverName -> { group -> count }
+
+  for (const e of allEvents) {
+    const gid = e.groupId;
+    if (!GROUPS[gid]) continue;
+    if (!isValidDriver(e)) continue;
+    const group = GROUPS[gid];
+    const name = (e.driverFirstName + ' ' + e.driverLastName).trim();
+
+    if (!driverMap[group]) driverMap[group] = {};
+    if (!driverMap[group][name]) driverMap[group][name] = { coachable: 0, total: 0, scoreSum: 0 };
+    driverMap[group][name].total++;
+    if (e.isCoachable) { driverMap[group][name].coachable++; driverMap[group][name].scoreSum += (e.score || 0); }
+
+    // Track cross-group presence
+    if (!driverGroupCount[name]) driverGroupCount[name] = {};
+    if (!driverGroupCount[name][group]) driverGroupCount[name][group] = 0;
+    driverGroupCount[name][group]++;
+  }
+
+  // For drivers appearing in multiple groups, keep only the group with highest event count
+  const driverPrimaryGroup = {};
+  for (const [name, groups] of Object.entries(driverGroupCount)) {
+    const primary = Object.entries(groups).sort((a,b) => b[1]-a[1])[0][0];
+    driverPrimaryGroup[name] = primary;
+    lytxDriverGroup[nameKey(name.split(' ')[0], name.split(' ').slice(-1)[0])] = primary;
+  }
+  if (dotData) renderDot(); // re-tag divisions once Lytx groups are known
+
+  // Build final leaderboards, excluding drivers not in primary group
+  const leaderboards = {};
+  for (const group of GROUP_ORDER) {
+    const drivers = driverMap[group] || {};
+    const scored = [];
+    for (const [name, stats] of Object.entries(drivers)) {
+      if (driverPrimaryGroup[name] !== group) continue; // skip if primary group is elsewhere
+      scored.push({ name, ...stats, displayScore: stats.scoreSum });
+    }
+    // Sort: fewest coachable first, then fewest total events as tiebreaker, then alpha
+    scored.sort((a,b) => a.scoreSum - b.scoreSum || a.coachable - b.coachable || a.name.localeCompare(b.name));
+    leaderboards[group] = scored.slice(0, 10);
+  }
+
+  renderLeaderboard(leaderboards, allEvents.length, start, end);
+}
+
+function renderLeaderboard(leaderboards, totalEvents, start, end) {
+  lytxReady = true;
+  document.getElementById('loading').style.display = 'none';
+  if (currentView === 'lytx') {
+    document.getElementById('dashboard').style.display = 'block';
+    document.getElementById('footer').style.display = 'block';
+  }
+
+  const startStr = start.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  const endStr   = end.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  headerText.lytx = { badge: `${startStr} – ${endStr}`, updated: 'Updated ' + new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) };
+  if (currentView === 'lytx') applyHeader();
+
+  const grid = document.getElementById('groups-grid');
+  grid.innerHTML = '';
+
+  for (const group of GROUP_ORDER) {
+    const drivers = leaderboards[group] || [];
+    const color   = GROUP_COLORS[group] || '#888';
+    const driverCount = drivers.length;
+
+    const card = document.createElement('div');
+    card.className = 'group-card';
+    card.innerHTML = `
+      <div class="group-header">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="group-accent" style="background:${color};"></div>
+          <div>
+            <div class="group-name">${group}</div>
+            <div class="group-meta">${driverCount} drivers ranked</div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.3);font-family:'DM Mono',monospace;">90-day window</div>
+      </div>
+      <div class="driver-list" id="list-${group}"></div>`;
+    grid.appendChild(card);
+
+    const list = document.getElementById('list-' + group);
+
+    if (drivers.length === 0) {
+      list.innerHTML = '<div style="padding:1.5rem;text-align:center;color:rgba(255,255,255,0.3);font-size:13px;">No data available</div>';
+      continue;
+    }
+
+    const medals = ['🥇','🥈','🥉'];
+    const maxCoachable = Math.max(...drivers.map(d => d.coachable), 1); // kept for reference
+
+    drivers.forEach((d, i) => {
+      const isPerfect = d.scoreSum === 0;
+      const maxScore = Math.max(...drivers.map(d => d.scoreSum), 1);
+      const barPct    = isPerfect ? 100 : Math.max(5, Math.round((1 - d.scoreSum / maxScore) * 100));
+      const scoreColor = isPerfect ? '#4ADE80' : d.scoreSum <= 20 ? '#60a5fa' : d.scoreSum <= 50 ? '#fbbf24' : '#f87171';
+      const rankClass = i < 3 ? `rank-${i+1}` : 'rank-other';
+
+      const row = document.createElement('div');
+      row.innerHTML = `
+        <div class="driver-row">
+          <div class="rank ${rankClass}">${i < 3 ? medals[i] : (i+1)}</div>
+          <div class="driver-name ${i < 3 ? 'top3' : ''}">${d.name}</div>
+          ${isPerfect ? '<span class="perfect-badge">PERFECT</span>' : ''}
+          <div class="score-area">
+            <div class="score-bar-track">
+              <div class="score-bar-fill" style="width:${barPct}%;background:${scoreColor};"></div>
+            </div>
+            <div class="score-val" style="color:${scoreColor};">${d.scoreSum}</div>
+            <div class="events-pill">${d.coachable} event${d.coachable !== 1 ? 's' : ''}</div>
+          </div>
+        </div>
+        ${i < drivers.length - 1 ? '<div class="driver-divider"></div>' : ''}`;
+      list.appendChild(row);
+    });
+  }
+}
+</script>
+</body>
+</html>
